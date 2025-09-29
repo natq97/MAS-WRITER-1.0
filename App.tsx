@@ -363,7 +363,7 @@ const App: React.FC = () => {
     const updatedOutline = updateItemStatus(activeFlow.outline, activeSectionId, SectionStatus.Writing);
     updateActiveFlow({ outline: updatedOutline });
 
-    // Common context gathering
+    // --- Centralized Context Assembly ---
     const contextSections = contextIds.map(id => {
       const item = findItem(activeFlow.outline, id);
       const content = activeFlow.contents[id]?.content;
@@ -373,6 +373,13 @@ const App: React.FC = () => {
     const researchContext = (activeContent.research_results || [])
       .map(r => `--- RESEARCH RESULT: ${r.title} ---\nURL: ${r.url}\nSummary: ${r.summary}`)
       .join('\n\n');
+
+    // Combine all context pieces into one string. CoordinatorPrompt is NOT included here.
+    const fullContext = [
+        activeProject.globalKnowledgeContext,
+        researchContext,
+        contextSections
+    ].filter(Boolean).join('\n\n');
 
     const systemPromptForAgent = activeFlow.contents[activeSectionId]?.systemPrompt;
 
@@ -384,7 +391,7 @@ const App: React.FC = () => {
         updateActiveFlow({ contents: newContents });
 
         try {
-            const responseText = await generateContent(newMessages, contextSections, researchContext, activeProject.globalKnowledgeContext, systemPromptForAgent);
+            const responseText = await generateContent(newMessages, fullContext, systemPromptForAgent);
             const agentMessage: Message = { sender: 'agent', text: responseText };
             
             newContents = {
@@ -410,7 +417,7 @@ const App: React.FC = () => {
         // --- BRANCH 2: "Generate Initial Draft" button click ---
         try {
             const initialDraftPrompt = `Write the content for the section titled "${activeSection.title}".`;
-            const responseText = await generateInitialDraft(initialDraftPrompt, contextSections, researchContext, activeProject.globalKnowledgeContext, systemPromptForAgent);
+            const responseText = await generateInitialDraft(initialDraftPrompt, fullContext, systemPromptForAgent);
             
             const agentMessage: Message = { sender: 'agent', text: responseText };
             const newContents = {
@@ -517,7 +524,6 @@ const App: React.FC = () => {
       .filter((ref): ref is { title: string; content: string } => ref !== null);
 
     return {
-      coordinatorPrompt: activeFlow.coordinatorPrompt,
       globalKnowledge: activeProject.globalKnowledgeFiles.map(f => f.name),
       systemPrompt: activeContent.systemPrompt || "Generating tailored prompt...",
       documentOutline: formatOutlineForDisplay(activeFlow.outline),

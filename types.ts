@@ -40,9 +40,10 @@ export interface ResearchResult {
 }
 
 export interface ContextData {
-  coordinatorPrompt: string;
+  coordinatorPrompt?: string;
   globalKnowledge: string[];
   systemPrompt: string;
+
   documentOutline: string;
   sessionKnowledge: string[];
   selectedReferences: { title: string; content: string }[];

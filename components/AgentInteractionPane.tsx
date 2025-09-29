@@ -263,13 +263,15 @@ const AgentInteractionPane: React.FC<AgentInteractionPaneProps> = (props) => {
                 <div className={!isOutlining ? 'border-t border-brand-accent pt-4' : ''}>
                     <h3 className="text-lg font-semibold mb-4">Full Agent Context Preview</h3>
                     <div className="space-y-2 text-sm">
-                        <details className="bg-brand-secondary rounded-lg overflow-hidden" open>
-                            <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
-                                <BracketsIcon className="w-4 h-4" />
-                                <span>Coordinator Prompt (Flow Level)</span>
-                            </summary>
-                            <pre className="p-3 bg-brand-primary text-xs text-brand-light whitespace-pre-wrap font-mono">{agentContextToShow.coordinatorPrompt}</pre>
-                        </details>
+                        {agentContextToShow.coordinatorPrompt && (
+                            <details className="bg-brand-secondary rounded-lg overflow-hidden" open>
+                                <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
+                                    <BracketsIcon className="w-4 h-4" />
+                                    <span>Coordinator Prompt (Flow Level)</span>
+                                </summary>
+                                <pre className="p-3 bg-brand-primary text-xs text-brand-light whitespace-pre-wrap font-mono">{agentContextToShow.coordinatorPrompt}</pre>
+                            </details>
+                        )}
                         
                         <details className="bg-brand-secondary rounded-lg overflow-hidden" open>
                             <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
