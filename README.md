@@ -13,7 +13,6 @@ MAS-Writer là một ứng dụng web tiên tiến, được thiết kế để 
 -   **Tác tử Nghiên cứu (Research Agent):** Tích hợp Google Search để tìm kiếm và tóm tắt thông tin từ web, cung cấp nguồn tham khảo cập nhật và đáng tin cậy.
 -   **Giao diện 3 cột:** Bố cục trực quan bao gồm Dàn ý, Vùng làm việc (Workspace), và Bảng tương tác với Tác tử, tối ưu hóa quy trình làm việc.
 -   **Xuất file Markdown:** Dễ dàng xuất toàn bộ nội dung đã hoàn thành ra định dạng file `.md` phổ biến.
--   **Lưu ý:** Tính năng KNOWLEDGE RAG chỉ dùng để demo và mô tả MVP 1.0, có thể bị lỗi khi sử dụng.
 
 ## 🛠️ Công Nghệ Sử Dụng
 

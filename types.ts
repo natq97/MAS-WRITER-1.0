@@ -49,15 +49,22 @@ export interface ContextData {
   researchContext?: ResearchResult[];
 }
 
-// New Project interface to hold all state for a single project
+// New Flow interface for a single authoring document
+export interface Flow {
+  id: string;
+  name: string;
+  outline: OutlineItem[];
+  contents: Record<string, SectionContent>;
+  outlineDraft: string;
+  outlinerMessages: Message[];
+}
+
+// Project interface updated to hold multiple flows
 export interface Project {
   id: string;
   name: string;
   coordinatorPrompt: string;
   globalKnowledgeFiles: File[];
   globalKnowledgeContext: string;
-  outline: OutlineItem[];
-  contents: Record<string, SectionContent>;
-  outlineDraft: string;
-  outlinerMessages: Message[];
+  flows: Flow[];
 }

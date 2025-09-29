@@ -1,12 +1,13 @@
-import React from 'react';
-import type { Project } from '../types';
-import { UploadCloudIcon, PlayIcon, FileTextIcon } from './icons';
+import React, { useState } from 'react';
+import type { Project, Flow } from '../types';
+import { UploadCloudIcon, PlayIcon, FileTextIcon, BracketsIcon } from './icons';
 
 interface ProjectDashboardProps {
   project: Project;
   onCoordinatorPromptChange: (value: string) => void;
   onGlobalFilesChange: (files: FileList | null) => void;
-  onEnterEditor: () => void;
+  onSelectFlow: (flowId: string) => void;
+  onCreateFlow: (name: string) => void;
   onBack: () => void; // For returning to the project list
 }
 
@@ -14,9 +15,25 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
   project,
   onCoordinatorPromptChange,
   onGlobalFilesChange,
-  onEnterEditor,
+  onSelectFlow,
+  onCreateFlow,
   onBack,
 }) => {
+  const [newFlowName, setNewFlowName] = useState('');
+
+  const handleCreateFlow = () => {
+    if (newFlowName.trim()) {
+      onCreateFlow(newFlowName.trim());
+      setNewFlowName('');
+    }
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleCreateFlow();
+    }
+  };
+
   return (
     <div className="h-screen w-screen bg-brand-primary text-brand-text flex items-center justify-center p-8 animate-fade-in">
       <div className="w-full max-w-4xl bg-brand-secondary rounded-lg shadow-2xl p-8 space-y-8 overflow-y-auto max-h-full relative">
@@ -34,6 +51,47 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
         </header>
 
         <section>
+          <h2 className="text-2xl font-semibold mb-3">Authoring Flows</h2>
+          <p className="text-sm text-brand-light mb-4">
+            Each project can contain multiple flows for different documents or topics. Create a new flow or open an existing one to begin authoring.
+          </p>
+          <div className="space-y-3">
+              {project.flows.map(flow => (
+                <div key={flow.id} className="p-4 bg-brand-primary rounded-lg flex items-center justify-between group">
+                    <div className="flex items-center space-x-3">
+                        <BracketsIcon className="w-6 h-6 text-brand-light" />
+                        <span className="font-semibold text-lg">{flow.name}</span>
+                    </div>
+                    <button 
+                        onClick={() => onSelectFlow(flow.id)}
+                        className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-200"
+                    >
+                        <PlayIcon className="w-5 h-5" />
+                        <span>Open Editor</span>
+                    </button>
+                </div>
+              ))}
+          </div>
+           <div className="mt-4 flex space-x-2 p-3 bg-brand-primary rounded-lg">
+                <input
+                    type="text"
+                    value={newFlowName}
+                    onChange={(e) => setNewFlowName(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Enter name for new authoring flow..."
+                    className="flex-grow bg-brand-secondary border border-brand-accent rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-brand-light"
+                />
+                <button
+                    onClick={handleCreateFlow}
+                    disabled={!newFlowName.trim()}
+                    className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-colors duration-200 disabled:bg-gray-500"
+                >
+                    + Create Flow
+                </button>
+            </div>
+        </section>
+
+        <section className="border-t border-brand-accent pt-6">
           <h2 className="text-2xl font-semibold mb-3">Coordinator Agent Prompt</h2>
           <p className="text-sm text-brand-light mb-4">
             This master prompt guides all AI agents in this project. Customize it to define the overall tone, style, and core objectives of your document.
@@ -41,7 +99,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
           <textarea
             value={project.coordinatorPrompt}
             onChange={(e) => onCoordinatorPromptChange(e.target.value)}
-            rows={6}
+            rows={4}
             className="w-full p-4 bg-brand-primary border border-brand-accent rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-brand-light text-brand-text leading-relaxed"
             placeholder="e.g., You are a helpful assistant writing a technical whitepaper for an expert audience. The tone should be formal, objective, and data-driven..."
           />
@@ -74,17 +132,6 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
             </div>
           )}
         </section>
-
-        <footer className="text-center border-t border-brand-accent pt-6">
-          <button
-            onClick={onEnterEditor}
-            className="flex items-center justify-center space-x-3 px-8 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200 transform hover:scale-105"
-          >
-            <PlayIcon className="w-6 h-6" />
-            <span>Enter Authoring Environment</span>
-          </button>
-        </footer>
-
       </div>
     </div>
   );
