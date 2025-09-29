@@ -6,6 +6,48 @@ import { SectionStatus, type OutlineItem, type ResearchResult, type Message } fr
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
+ * Generates initial content for a section when there is no prior chat history.
+ * This is a single-turn generation, not a chat continuation.
+ * @param initialPrompt The instruction for generation (e.g., "Write content for 'Introduction'").
+ * @param contextSections Content from other referenced sections.
+ * @param researchContext Content from the research agent.
+ * @param globalKnowledgeContext Content from the project's global knowledge base.
+ * @param systemInstruction A specific system prompt for the agent.
+ * @returns The generated content as a string.
+ */
+export const generateInitialDraft = async (initialPrompt: string, contextSections: string, researchContext: string, globalKnowledgeContext: string, systemInstruction?: string): Promise<string> => {
+  console.log("Calling Gemini API for Writer Agent (Initial Draft).");
+
+  try {
+    // We construct a single, comprehensive prompt for the model.
+    const fullPrompt = `
+      ${globalKnowledgeContext}
+
+      ${researchContext}
+
+      ${contextSections}
+
+      ---
+      User instruction: "${initialPrompt}"
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      // The `contents` array contains just this single, comprehensive prompt.
+      contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+      config: {
+        systemInstruction,
+      },
+    });
+    return response.text;
+  } catch (error) {
+    console.error("Gemini API call for generateInitialDraft failed:", error);
+    throw new Error("Failed to generate initial draft from AI Agent.");
+  }
+};
+
+
+/**
  * Generates content using the Writer Agent, now with chat history awareness.
  * @param messages The entire conversation history for the current section.
  * @param contextSections The content from other referenced sections.

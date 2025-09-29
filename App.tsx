@@ -7,6 +7,7 @@ import ProjectDashboard from './components/ProjectDashboard';
 import ProjectList from './components/ProjectList'; // New component
 import { 
     generateContent, 
+    generateInitialDraft,
     generateOutline, 
     researchTopic, 
     createTailoredSystemPrompt, 
@@ -361,48 +362,77 @@ const App: React.FC = () => {
     
     const updatedOutline = updateItemStatus(activeFlow.outline, activeSectionId, SectionStatus.Writing);
     updateActiveFlow({ outline: updatedOutline });
-    
-    let finalPrompt = prompt || `Write the content for the section titled "${activeSection.title}".`;
-    
-    const userMessage: Message = { sender: 'user', text: finalPrompt };
-    const newMessages = [...(activeContent.messages || []), userMessage];
-    let newContents = { ...activeFlow.contents, [activeSectionId]: { ...activeContent, messages: newMessages } };
-    updateActiveFlow({ contents: newContents });
 
-    try {
-      const contextSections = contextIds.map(id => {
-          const item = findItem(activeFlow.outline, id);
-          const content = activeFlow.contents[id]?.content;
-          return item && content ? `--- REF: ${item.title} ---\n${content}` : null;
-      }).filter(Boolean).join('\n\n');
+    // Common context gathering
+    const contextSections = contextIds.map(id => {
+      const item = findItem(activeFlow.outline, id);
+      const content = activeFlow.contents[id]?.content;
+      return item && content ? `--- REF: ${item.title} ---\n${content}` : null;
+    }).filter(Boolean).join('\n\n');
 
-      const researchContext = (activeContent.research_results || [])
-        .map(r => `--- RESEARCH RESULT: ${r.title} ---\nURL: ${r.url}\nSummary: ${r.summary}`)
-        .join('\n\n');
+    const researchContext = (activeContent.research_results || [])
+      .map(r => `--- RESEARCH RESULT: ${r.title} ---\nURL: ${r.url}\nSummary: ${r.summary}`)
+      .join('\n\n');
 
-      const systemPromptForAgent = activeFlow.contents[activeSectionId]?.systemPrompt;
-      
-      const responseText = await generateContent(newMessages, contextSections, researchContext, activeProject.globalKnowledgeContext, systemPromptForAgent);
-      
-      const agentMessage: Message = { sender: 'agent', text: responseText };
-       newContents = {
-         ...activeFlow.contents,
-         [activeSectionId]: {
-           ...(activeFlow.contents[activeSectionId] || activeContent),
-           content: responseText,
-           messages: [...newMessages, agentMessage],
-         },
-      };
-      updateActiveFlow({ contents: newContents });
+    const systemPromptForAgent = activeFlow.contents[activeSectionId]?.systemPrompt;
 
-    } catch (error) {
-      console.error("Error generating content:", error);
-      setToast({ message: 'Failed to generate content.', type: 'error' });
-      const agentErrorMessage: Message = { sender: 'agent', text: `I'm sorry, I encountered an error: ${error.message}`};
-      newContents = { ...activeFlow.contents, [activeSectionId]: { ...(activeFlow.contents[activeSectionId] || activeContent), messages: [...newMessages, agentErrorMessage] } };
-      updateActiveFlow({ contents: newContents });
-    } finally {
-      setAgentStatus(AgentStatus.Idle);
+    if (prompt) {
+        // --- BRANCH 1: Standard follow-up chat message ---
+        const userMessage: Message = { sender: 'user', text: prompt };
+        const newMessages = [...(activeContent.messages || []), userMessage];
+        let newContents = { ...activeFlow.contents, [activeSectionId]: { ...activeContent, messages: newMessages } };
+        updateActiveFlow({ contents: newContents });
+
+        try {
+            const responseText = await generateContent(newMessages, contextSections, researchContext, activeProject.globalKnowledgeContext, systemPromptForAgent);
+            const agentMessage: Message = { sender: 'agent', text: responseText };
+            
+            newContents = {
+                ...activeFlow.contents,
+                [activeSectionId]: {
+                    ...(activeFlow.contents[activeSectionId] || activeContent),
+                    content: responseText, // Also update the main content with the latest response
+                    messages: [...newMessages, agentMessage],
+                },
+            };
+            updateActiveFlow({ contents: newContents });
+
+        } catch (error) {
+            console.error("Error generating content:", error);
+            setToast({ message: 'Failed to generate content.', type: 'error' });
+            const agentErrorMessage: Message = { sender: 'agent', text: `I'm sorry, I encountered an error: ${error.message}`};
+            newContents = { ...activeFlow.contents, [activeSectionId]: { ...(activeFlow.contents[activeSectionId] || activeContent), messages: [...newMessages, agentErrorMessage] } };
+            updateActiveFlow({ contents: newContents });
+        } finally {
+            setAgentStatus(AgentStatus.Idle);
+        }
+    } else {
+        // --- BRANCH 2: "Generate Initial Draft" button click ---
+        try {
+            const initialDraftPrompt = `Write the content for the section titled "${activeSection.title}".`;
+            const responseText = await generateInitialDraft(initialDraftPrompt, contextSections, researchContext, activeProject.globalKnowledgeContext, systemPromptForAgent);
+            
+            const agentMessage: Message = { sender: 'agent', text: responseText };
+            const newContents = {
+                ...activeFlow.contents,
+                [activeSectionId]: {
+                    ...(activeFlow.contents[activeSectionId] || activeContent),
+                    content: responseText,
+                    messages: [agentMessage], // This is the first and only message so far
+                },
+            };
+            updateActiveFlow({ contents: newContents });
+
+        } catch (error) {
+            console.error("Error generating initial draft:", error);
+            setToast({ message: 'Failed to generate initial draft.', type: 'error' });
+            const agentErrorMessage: Message = { sender: 'agent', text: `I'm sorry, I encountered an error: ${error.message}`};
+            const newContents = { ...activeFlow.contents, [activeSectionId]: { ...(activeFlow.contents[activeSectionId] || activeContent), messages: [agentErrorMessage] } };
+            updateActiveFlow({ contents: newContents });
+
+        } finally {
+            setAgentStatus(AgentStatus.Idle);
+        }
     }
   }, [activeSectionId, activeSection, activeProject, activeFlow, activeContent, updateActiveFlow]);
 
