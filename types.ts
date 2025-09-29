@@ -53,6 +53,7 @@ export interface ContextData {
 export interface Flow {
   id: string;
   name: string;
+  coordinatorPrompt: string;
   outline: OutlineItem[];
   contents: Record<string, SectionContent>;
   outlineDraft: string;
@@ -63,7 +64,6 @@ export interface Flow {
 export interface Project {
   id: string;
   name: string;
-  coordinatorPrompt: string;
   globalKnowledgeFiles: File[];
   globalKnowledgeContext: string;
   flows: Flow[];

@@ -4,7 +4,6 @@ import { UploadCloudIcon, PlayIcon, FileTextIcon, BracketsIcon } from './icons';
 
 interface ProjectDashboardProps {
   project: Project;
-  onCoordinatorPromptChange: (value: string) => void;
   onGlobalFilesChange: (files: FileList | null) => void;
   onSelectFlow: (flowId: string) => void;
   onCreateFlow: (name: string) => void;
@@ -13,7 +12,6 @@ interface ProjectDashboardProps {
 
 const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
   project,
-  onCoordinatorPromptChange,
   onGlobalFilesChange,
   onSelectFlow,
   onCreateFlow,
@@ -92,20 +90,6 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
         </section>
 
         <section className="border-t border-brand-accent pt-6">
-          <h2 className="text-2xl font-semibold mb-3">Coordinator Agent Prompt</h2>
-          <p className="text-sm text-brand-light mb-4">
-            This master prompt guides all AI agents in this project. Customize it to define the overall tone, style, and core objectives of your document.
-          </p>
-          <textarea
-            value={project.coordinatorPrompt}
-            onChange={(e) => onCoordinatorPromptChange(e.target.value)}
-            rows={4}
-            className="w-full p-4 bg-brand-primary border border-brand-accent rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-brand-light text-brand-text leading-relaxed"
-            placeholder="e.g., You are a helpful assistant writing a technical whitepaper for an expert audience. The tone should be formal, objective, and data-driven..."
-          />
-        </section>
-
-        <section>
           <h2 className="text-2xl font-semibold mb-3">Global Knowledge Base (RAG)</h2>
           <p className="text-sm text-brand-light mb-4">
             Upload documents here to make them available as a knowledge source for all agents across the entire project.

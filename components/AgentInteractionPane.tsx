@@ -26,6 +26,9 @@ interface AgentInteractionPaneProps {
   // Context Previews
   fullAgentContext: ContextData | null;
   outlinerAgentContext: ContextData;
+  // Flow Coordinator Prompt
+  flowCoordinatorPrompt: string;
+  onFlowCoordinatorPromptChange: (newPrompt: string) => void;
 }
 
 const AgentInteractionPane: React.FC<AgentInteractionPaneProps> = (props) => {
@@ -35,7 +38,8 @@ const AgentInteractionPane: React.FC<AgentInteractionPaneProps> = (props) => {
       agentStatus, outline, contextIds, onContextChange, 
       sessionFiles, onFilesChange,
       researchAgentStatus, onResearch, researchResults,
-      fullAgentContext, outlinerAgentContext
+      fullAgentContext, outlinerAgentContext,
+      flowCoordinatorPrompt, onFlowCoordinatorPromptChange
   } = props;
   
   const [activeTab, setActiveTab] = useState<'chat' | 'knowledge' | 'context'>('chat');
@@ -215,137 +219,152 @@ const AgentInteractionPane: React.FC<AgentInteractionPaneProps> = (props) => {
 
           </div>
         )}
-        {activeTab === 'context' && agentContextToShow && (
+        {activeTab === 'context' && (
           <div>
-            <h3 className="text-lg font-semibold mb-2">{isOutlining ? 'Outliner Agent Context' : 'Writer Agent Context'}</h3>
+            <h3 className="text-lg font-semibold mb-2">Flow Coordinator Prompt</h3>
             <p className="text-sm text-brand-light mb-4">
-              {isOutlining 
-                ? "This is the context the Outliner Agent uses to process your requests."
-                : "Select completed sections to provide as context for the agent's next task."
-              }
+                This master prompt guides all AI agents for this specific flow.
             </p>
+            <textarea
+                value={flowCoordinatorPrompt}
+                onChange={(e) => onFlowCoordinatorPromptChange(e.target.value)}
+                rows={5}
+                className="w-full p-2 mb-6 bg-brand-secondary border border-brand-accent rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-brand-light text-brand-text text-sm leading-relaxed"
+            />
             
-            {!isOutlining && (
-                 <div className="space-y-2 mb-6">
-                    {allSections()
-                        .filter(sec => !activeSection || sec.id !== activeSection.id)
-                        .map(section => (
-                        <label key={section.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-brand-secondary cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={contextIds.includes(section.id)}
-                            onChange={(e) => onContextChange(section.id, e.target.checked)}
-                            className="h-4 w-4 rounded bg-brand-accent border-brand-light text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-brand-text">{section.title}</span>
-                        </label>
-                      ))}
+            {agentContextToShow && (
+              <div className="border-t border-brand-accent pt-4">
+                <h3 className="text-lg font-semibold mb-2">{isOutlining ? 'Outliner Agent Context' : 'Writer Agent Context'}</h3>
+                <p className="text-sm text-brand-light mb-4">
+                  {isOutlining 
+                    ? "This is the context the Outliner Agent uses to process your requests."
+                    : "Select completed sections to provide as context for the agent's next task."
+                  }
+                </p>
+                
+                {!isOutlining && (
+                     <div className="space-y-2 mb-6">
+                        {allSections()
+                            .filter(sec => !activeSection || sec.id !== activeSection.id)
+                            .map(section => (
+                            <label key={section.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-brand-secondary cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={contextIds.includes(section.id)}
+                                onChange={(e) => onContextChange(section.id, e.target.checked)}
+                                className="h-4 w-4 rounded bg-brand-accent border-brand-light text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="text-brand-text">{section.title}</span>
+                            </label>
+                          ))}
+                    </div>
+                )}
+                
+                <div className={!isOutlining ? 'border-t border-brand-accent pt-4' : ''}>
+                    <h3 className="text-lg font-semibold mb-4">Full Agent Context Preview</h3>
+                    <div className="space-y-2 text-sm">
+                        <details className="bg-brand-secondary rounded-lg overflow-hidden" open>
+                            <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
+                                <BracketsIcon className="w-4 h-4" />
+                                <span>Coordinator Prompt (Flow Level)</span>
+                            </summary>
+                            <pre className="p-3 bg-brand-primary text-xs text-brand-light whitespace-pre-wrap font-mono">{agentContextToShow.coordinatorPrompt}</pre>
+                        </details>
+                        
+                        <details className="bg-brand-secondary rounded-lg overflow-hidden" open>
+                            <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
+                                <BracketsIcon className="w-4 h-4" />
+                                <span>Global Knowledge Base</span>
+                            </summary>
+                            <div className="p-3 bg-brand-primary text-xs text-brand-light">
+                                {agentContextToShow.globalKnowledge.length > 0 ? (
+                                    <ul className="list-disc list-inside font-mono">
+                                        {agentContextToShow.globalKnowledge.map(name => <li key={name}>{name}</li>)}
+                                    </ul>
+                                ) : (
+                                    <p className="italic">No global knowledge files uploaded.</p>
+                                )}
+                            </div>
+                        </details>
+
+                        <details className="bg-brand-secondary rounded-lg overflow-hidden" open>
+                            <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
+                                <BracketsIcon className="w-4 h-4" />
+                                <span>System Prompt (Task Specific)</span>
+                            </summary>
+                            <pre className="p-3 bg-brand-primary text-xs text-brand-light whitespace-pre-wrap font-mono">{agentContextToShow.systemPrompt}</pre>
+                        </details>
+
+                        <details className="bg-brand-secondary rounded-lg overflow-hidden" open>
+                            <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
+                                <BracketsIcon className="w-4 h-4" />
+                                <span>{isOutlining ? 'Current Outline Draft' : 'Document Outline'}</span>
+                            </summary>
+                            <pre className="p-3 bg-brand-primary text-xs text-brand-light whitespace-pre-wrap font-mono">{agentContextToShow.documentOutline}</pre>
+                        </details>
+
+                        {!isOutlining && (
+                            <>
+                                <details className="bg-brand-secondary rounded-lg overflow-hidden">
+                                    <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
+                                        <BracketsIcon className="w-4 h-4" />
+                                        <span>Session Knowledge</span>
+                                    </summary>
+                                    <div className="p-3 bg-brand-primary text-xs text-brand-light">
+                                        {agentContextToShow.sessionKnowledge.length > 0 ? (
+                                            <ul className="list-disc list-inside">
+                                                {agentContextToShow.sessionKnowledge.map(name => <li key={name}>{name}</li>)}
+                                            </ul>
+                                        ) : (
+                                            <p className="italic">No session files uploaded.</p>
+                                        )}
+                                    </div>
+                                </details>
+                                
+                                <details className="bg-brand-secondary rounded-lg overflow-hidden">
+                                    <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
+                                        <BracketsIcon className="w-4 h-4" />
+                                        <span>Research Results</span>
+                                    </summary>
+                                    <div className="p-3 bg-brand-primary text-xs text-brand-light space-y-2">
+                                        {agentContextToShow.researchContext && agentContextToShow.researchContext.length > 0 ? (
+                                            agentContextToShow.researchContext.map(result => (
+                                                <div key={result.id}>
+                                                    <p className="font-bold font-mono">--- RESULT: {result.title} ---</p>
+                                                    <a href={result.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline font-mono text-xs block truncate">{result.url}</a>
+                                                    <pre className="whitespace-pre-wrap font-mono text-gray-400 mt-1">{result.summary}</pre>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="italic">No research performed for this session.</p>
+                                        )}
+                                    </div>
+                                </details>
+
+                                <details className="bg-brand-secondary rounded-lg overflow-hidden">
+                                    <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
+                                        <BracketsIcon className="w-4 h-4" />
+                                        <span>Selected References</span>
+                                    </summary>
+                                    <div className="p-3 bg-brand-primary text-xs text-brand-light space-y-2">
+                                        {agentContextToShow.selectedReferences.length > 0 ? (
+                                            agentContextToShow.selectedReferences.map(ref => (
+                                                <div key={ref.title}>
+                                                    <p className="font-bold font-mono">--- REF: {ref.title} ---</p>
+                                                    <pre className="whitespace-pre-wrap font-mono text-gray-400 mt-1">{ref.content.substring(0, 200)}...</pre>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="italic">No references selected.</p>
+                                        )}
+                                    </div>
+                                </details>
+                            </>
+                        )}
+                    </div>
                 </div>
+              </div>
             )}
-            
-            <div className={!isOutlining ? 'border-t border-brand-accent pt-4' : ''}>
-                <h3 className="text-lg font-semibold mb-4">Full Agent Context Preview</h3>
-                <div className="space-y-2 text-sm">
-                    <details className="bg-brand-secondary rounded-lg overflow-hidden" open>
-                        <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
-                            <BracketsIcon className="w-4 h-4" />
-                            <span>Coordinator Prompt (Global)</span>
-                        </summary>
-                        <pre className="p-3 bg-brand-primary text-xs text-brand-light whitespace-pre-wrap font-mono">{agentContextToShow.coordinatorPrompt}</pre>
-                    </details>
-                    
-                    <details className="bg-brand-secondary rounded-lg overflow-hidden" open>
-                        <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
-                            <BracketsIcon className="w-4 h-4" />
-                            <span>Global Knowledge Base</span>
-                        </summary>
-                        <div className="p-3 bg-brand-primary text-xs text-brand-light">
-                            {agentContextToShow.globalKnowledge.length > 0 ? (
-                                <ul className="list-disc list-inside font-mono">
-                                    {agentContextToShow.globalKnowledge.map(name => <li key={name}>{name}</li>)}
-                                </ul>
-                            ) : (
-                                <p className="italic">No global knowledge files uploaded.</p>
-                            )}
-                        </div>
-                    </details>
-
-                    <details className="bg-brand-secondary rounded-lg overflow-hidden" open>
-                        <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
-                            <BracketsIcon className="w-4 h-4" />
-                            <span>System Prompt (Task Specific)</span>
-                        </summary>
-                        <pre className="p-3 bg-brand-primary text-xs text-brand-light whitespace-pre-wrap font-mono">{agentContextToShow.systemPrompt}</pre>
-                    </details>
-
-                    <details className="bg-brand-secondary rounded-lg overflow-hidden" open>
-                        <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
-                            <BracketsIcon className="w-4 h-4" />
-                            <span>{isOutlining ? 'Current Outline Draft' : 'Document Outline'}</span>
-                        </summary>
-                        <pre className="p-3 bg-brand-primary text-xs text-brand-light whitespace-pre-wrap font-mono">{agentContextToShow.documentOutline}</pre>
-                    </details>
-
-                    {!isOutlining && (
-                        <>
-                            <details className="bg-brand-secondary rounded-lg overflow-hidden">
-                                <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
-                                    <BracketsIcon className="w-4 h-4" />
-                                    <span>Session Knowledge</span>
-                                </summary>
-                                <div className="p-3 bg-brand-primary text-xs text-brand-light">
-                                    {agentContextToShow.sessionKnowledge.length > 0 ? (
-                                        <ul className="list-disc list-inside">
-                                            {agentContextToShow.sessionKnowledge.map(name => <li key={name}>{name}</li>)}
-                                        </ul>
-                                    ) : (
-                                        <p className="italic">No session files uploaded.</p>
-                                    )}
-                                </div>
-                            </details>
-                            
-                            <details className="bg-brand-secondary rounded-lg overflow-hidden">
-                                <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
-                                    <BracketsIcon className="w-4 h-4" />
-                                    <span>Research Results</span>
-                                </summary>
-                                <div className="p-3 bg-brand-primary text-xs text-brand-light space-y-2">
-                                    {agentContextToShow.researchContext && agentContextToShow.researchContext.length > 0 ? (
-                                        agentContextToShow.researchContext.map(result => (
-                                            <div key={result.id}>
-                                                <p className="font-bold font-mono">--- RESULT: {result.title} ---</p>
-                                                <a href={result.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline font-mono text-xs block truncate">{result.url}</a>
-                                                <pre className="whitespace-pre-wrap font-mono text-gray-400 mt-1">{result.summary}</pre>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="italic">No research performed for this session.</p>
-                                    )}
-                                </div>
-                            </details>
-
-                            <details className="bg-brand-secondary rounded-lg overflow-hidden">
-                                <summary className="p-2 font-semibold cursor-pointer flex items-center space-x-2">
-                                    <BracketsIcon className="w-4 h-4" />
-                                    <span>Selected References</span>
-                                </summary>
-                                <div className="p-3 bg-brand-primary text-xs text-brand-light space-y-2">
-                                    {agentContextToShow.selectedReferences.length > 0 ? (
-                                        agentContextToShow.selectedReferences.map(ref => (
-                                            <div key={ref.title}>
-                                                <p className="font-bold font-mono">--- REF: {ref.title} ---</p>
-                                                <pre className="whitespace-pre-wrap font-mono text-gray-400 mt-1">{ref.content.substring(0, 200)}...</pre>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="italic">No references selected.</p>
-                                    )}
-                                </div>
-                            </details>
-                        </>
-                    )}
-                </div>
-            </div>
           </div>
         )}
       </div>

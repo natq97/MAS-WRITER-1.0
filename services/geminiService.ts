@@ -6,16 +6,6 @@ import { SectionStatus, type OutlineItem, type ResearchResult, type Message } fr
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
- * The system prompt that defines the behavior of the Outliner Agent.
- */
-export const OUTLINER_SYSTEM_PROMPT = `You are a professional editor and content strategist.
-Your task is to process a user's request to either create a new document outline or modify an existing one.
-The outline is provided as a Markdown list.
-You MUST return the complete, updated outline as a single, clean Markdown list. Use hyphens (-) and indentation to represent hierarchy.
-Do NOT add any explanatory text, markdown formatting (like \`\`\`), or anything else before or after the Markdown list. Your entire response must be only the list.`;
-
-
-/**
  * Generates content using the Writer Agent, now with chat history awareness.
  * @param messages The entire conversation history for the current section.
  * @param contextSections The content from other referenced sections.
@@ -87,18 +77,57 @@ const addMetadataToOutline = (items: any[], level = 0, parentId = ''): OutlineIt
     });
 };
 
+/**
+ * Creates a tailored system prompt for the Outliner Agent based on the flow's coordinator prompt.
+ * This function acts as the "Coordinator Agent".
+ * @param coordinatorPrompt The master prompt for the entire flow.
+ * @returns A tailored system prompt for the Outliner Agent as a string.
+ */
+export const createOutlinerSystemPrompt = async (coordinatorPrompt: string): Promise<string> => {
+  console.log("Calling Gemini API to create a tailored system prompt for the Outliner");
+
+  const prompt = `
+    A high-level master instruction for an entire authoring project has been provided:
+    --- MASTER INSTRUCTION (COORDINATOR PROMPT) ---
+    ${coordinatorPrompt}
+    --- END MASTER INSTRUCTION ---
+
+    Based ONLY on this master instruction, generate a concise and specific "system prompt" for an AI Outliner Agent.
+    This system prompt must guide the Outliner Agent to create and modify document outlines in Markdown format.
+    It should incorporate the key goals from the master instruction (e.g., tone, target audience, complexity).
+    It must also retain the core technical instructions for the Outliner Agent: to process user requests, work with Markdown lists, and return ONLY the complete, updated Markdown list without any extra text, markdown formatting (like \`\`\`), or explanations.
+
+    The final system prompt should be a direct instruction to the AI, starting with "You are...".
+
+    **Generate the System Prompt for the Outliner Agent now.**
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+    return response.text.trim();
+  } catch (error) {
+    console.error("Gemini API call for createOutlinerSystemPrompt failed:", error);
+    throw new Error("Failed to create a tailored system prompt for the Outliner.");
+  }
+};
+
 
 /**
  * Generates or modifies a document outline using the Outliner Agent, returning a text-based (Markdown) format.
  * @param currentOutlineText The existing outline structure as a Markdown string.
  * @param prompt The user's instruction for modification.
- * @param coordinatorPrompt The master prompt for the entire project.
+ * @param systemInstruction The dynamically generated system prompt that guides the agent.
  * @returns The new, updated outline as a Markdown string.
  */
-export const generateOutline = async (currentOutlineText: string, prompt: string, coordinatorPrompt: string): Promise<string> => {
+export const generateOutline = async (currentOutlineText: string, prompt: string, systemInstruction: string): Promise<string> => {
     console.log("Calling Gemini API for Outliner Agent (Text Mode)");
 
     const fullPrompt = `
+      Please process the user's command regarding the document outline.
+
       Current Outline (Markdown):
       ${currentOutlineText || "(empty)"}
 
@@ -106,14 +135,12 @@ export const generateOutline = async (currentOutlineText: string, prompt: string
       User Command: "${prompt}"
     `;
 
-    const combinedSystemInstruction = `${coordinatorPrompt}\n\n---\n\n${OUTLINER_SYSTEM_PROMPT}`;
-
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: fullPrompt,
             config: {
-                systemInstruction: combinedSystemInstruction,
+                systemInstruction: systemInstruction,
             }
         });
 
@@ -175,19 +202,63 @@ Do NOT add any explanatory text, markdown formatting, or anything else before or
 
 
 /**
+ * Creates a tailored prompt for the Research Agent based on the user's query and the flow's coordinator prompt.
+ * This function acts as the "Coordinator Agent".
+ * @param query The user's research query.
+ * @param coordinatorPrompt The master prompt for the entire flow.
+ * @returns A tailored prompt for the Research Agent as a string.
+ */
+export const createResearchAgentPrompt = async (query: string, coordinatorPrompt: string): Promise<string> => {
+  console.log("Calling Gemini API to create a tailored prompt for the Research Agent");
+
+  const metaPrompt = `
+    You are a master coordinator for an AI authoring system. Your primary role is to craft the perfect prompts for other specialized AI agents.
+
+    A high-level master instruction for an entire authoring project has been provided:
+    --- MASTER INSTRUCTION (COORDINATOR PROMPT) ---
+    ${coordinatorPrompt}
+    --- END MASTER INSTRUCTION ---
+
+    A user needs to research a specific topic to help with this project.
+    **User's Research Topic:** "${query}"
+
+    Your task is to generate a concise and effective prompt for a "Research Agent". This Research Agent has access to Google Search. The prompt you generate should instruct the Research Agent to:
+    1.  Clearly understand the user's topic.
+    2.  Keep the project's master instruction in mind to find the most relevant results.
+    3.  Return the top 3 most relevant results.
+    4.  For each result, provide a title and a one-sentence summary.
+    5.  Format the response clearly.
+
+    The final generated prompt must be a single, direct instruction to the Research Agent. Do not add any conversational text or explanations.
+
+    **Generate the prompt for the Research Agent now.**
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: metaPrompt,
+    });
+    return response.text.trim();
+  } catch (error) {
+    console.error("Gemini API call for createResearchAgentPrompt failed:", error);
+    throw new Error("Failed to create a tailored prompt for the Research agent.");
+  }
+};
+
+
+/**
  * Researches a topic using the Research Agent with Google Search grounding.
- * @param query The topic to research.
+ * @param generatedPrompt The full, tailored prompt generated by the Coordinator Agent.
  * @returns A list of research results with titles, URLs, and summaries.
  */
-export const researchTopic = async (query: string): Promise<ResearchResult[]> => {
+export const researchTopic = async (generatedPrompt: string): Promise<ResearchResult[]> => {
     console.log("Calling Gemini API for Research Agent with Google Search");
     
-    const prompt = `You are a Research Agent. Your task is to perform a web search about the following topic and return the top 3 results. For each result, provide the title and a one-sentence summary. Format your response clearly. Topic: "${query}"`;
-
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: prompt,
+            contents: generatedPrompt,
             config: {
                 tools: [{ googleSearch: {} }],
             },
@@ -233,6 +304,7 @@ export const researchTopic = async (query: string): Promise<ResearchResult[]> =>
 
 /**
  * Creates a tailored system prompt for the Writer Agent based on the document context.
+ * This function acts as the "Coordinator Agent".
  * @param documentTitle The main title of the document.
  * @param outlineStructure A string representation of the document's outline.
  * @param currentSectionTitle The title of the section being written.
@@ -272,8 +344,9 @@ export const createTailoredSystemPrompt = async (
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
-    // The final prompt for the agent will be a combination of the coordinator's high-level instruction and the specific tailored one.
-    return `${coordinatorPrompt}\n\n---\n\n${response.text.trim()}`;
+    // This function acts as the "Coordinator Agent", creating a tailored prompt based on the master instruction.
+    // The result is the final, specific system prompt for the Writer Agent.
+    return response.text.trim();
   } catch (error) {
     console.error("Gemini API call for createTailoredSystemPrompt failed:", error);
     throw new Error("Failed to create a tailored system prompt.");
